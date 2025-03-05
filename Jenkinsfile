@@ -1,28 +1,56 @@
 pipeline {
     agent any
+
+    tools {
+        // Khai báo các tool nếu Jenkins chưa cài đặt global
+        // Tên này phải trùng với Global Tool Configuration
+        jdk 'jdk11'
+        maven 'maven3.8.6'
+    }
+
     stages {
+        stage('Checkout') {
+            steps {
+                // Lấy source code từ SCM (repo, branch) mà Jenkinsfile đang quét
+                checkout scm
+            }
+        }
+
         stage('Build') {
             steps {
-                echo "Building.."
-                sh '''
-                echo doing build stuff..
-                '''
+                echo "Building all microservices..."
+                sh "mvn clean package -DskipTests"
             }
         }
+
         stage('Test') {
             steps {
-                echo "Testing.."
-                sh '''
-                echo doing test stuff..
-                '''
+                echo "Running tests..."
+                // Chạy test cho toàn bộ microservices
+                sh "mvn test"
+            }
+            post {
+                always {
+                    // Thu thập báo cáo JUnit
+                    junit '**/target/surefire-reports/*.xml'
+                    
+                    // Thu thập báo cáo coverage bằng JaCoCo (nếu plugin đã được cài)
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
+                }
             }
         }
+
         stage('Deliver') {
             steps {
-                echo 'Deliver....'
-                sh '''
-                echo doing delivery stuff..
-                '''
+                echo "Delivering artifacts..."
+                // Tùy theo cách bạn triển khai: đẩy image Docker, upload file .jar, v.v.
+                // Ví dụ:
+                // sh "docker build -t my-petclinic ."
+                // sh "docker push my-petclinic"
             }
         }
     }
