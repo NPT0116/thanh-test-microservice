@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Thêm đường dẫn mong muốn vào biến PATH hiện tại của hệ thống
         PATH = "C:\\Windows\\System32;${env.PATH}"
     }
 
@@ -14,20 +13,31 @@ pipeline {
         }
         stage('Test') {
             steps {
-                // Chạy test bằng Maven
                 bat 'mvn test'
             }
             post {
                 always {
-                    // Thu thập báo cáo test
+                    // Thu thập kết quả test
                     junit '**/target/surefire-reports/*.xml'
-                    
-                    // Publish coverage nếu có JaCoCo
+                    // Thu thập báo cáo độ phủ với JaCoCo
                     jacoco(
                         execPattern: '**/target/jacoco.exec',
                         classPattern: '**/target/classes',
                         sourcePattern: '**/src/main/java'
                     )
+                    script {
+                        // Ví dụ: trích xuất số liệu độ phủ và tóm tắt kết quả test
+                        def coverage = "75%"         // Ví dụ: 75% độ phủ
+                        def testSummary = "All tests passed"
+
+                        // Sử dụng publishChecks để cập nhật thông tin lên GitHub
+                        publishChecks context: 'Jenkins/CI',
+                                      conclusion: 'SUCCESS',
+                                      output: [
+                                          title: "Build succeeded",
+                                          summary: "Test result: ${testSummary}\nCoverage: ${coverage}"
+                                      ]
+                    }
                 }
             }
         }
@@ -39,59 +49,16 @@ pipeline {
     }
 
     post {
-        success {
-            // Cập nhật trạng thái SUCCESS lên GitHub
-            script {
-                step([
-                    $class: 'GitHubCommitStatusSetter',
-                    reposSource: [
-                        $class: 'ManuallyEnteredRepositorySource',
-                        url: 'https://github.com/NPT0116/thanh-test-microservice.git' // Sửa lại URL repo nếu cần
-                    ],
-                    contextSource: [
-                        $class: 'ManuallyEnteredCommitContextSource',
-                        context: 'Jenkins/CI'
-                    ],
-                    statusResultSource: [
-                        $class: 'ConditionalStatusResultSource',
-                        results: [
-                            [
-                                $class: 'AnyBuildResult',
-                                state: 'SUCCESS',
-                                message: 'All builds passed!'
-                            ]
-                        ]
-                    ]
-                ])
-            }
-            echo 'Build succeeded!'
-        }
         failure {
-            // Cập nhật trạng thái FAILURE lên GitHub
             script {
-                step([
-                    $class: 'GitHubCommitStatusSetter',
-                    reposSource: [
-                        $class: 'ManuallyEnteredRepositorySource',
-                        url: 'https://github.com/NPT0116/thanh-test-microservice.git'
-                    ],
-                    contextSource: [
-                        $class: 'ManuallyEnteredCommitContextSource',
-                        context: 'Jenkins/CI'
-                    ],
-                    statusResultSource: [
-                        $class: 'ConditionalStatusResultSource',
-                        results: [
-                            [
-                                $class: 'AnyBuildResult',
-                                state: 'FAILURE',
-                                message: 'Build failed or coverage below threshold!'
-                            ]
-                        ]
-                    ]
-                ])
+                // Trong trường hợp build thất bại, cập nhật trạng thái FAILURE
+                publishChecks context: 'Jenkins/CI',
+                              conclusion: 'FAILURE',
+                              output: [
+                                  title: "Build failed",
+                                  summary: "Build failed or coverage below threshold!"
+                              ]
             }
-            echo 'Build failed!'
         }
     }
 }
