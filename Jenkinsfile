@@ -1,10 +1,7 @@
 pipeline {
     agent any
 
-    environment {
-        // Bổ sung đường dẫn Maven vào PATH (tuỳ máy)
-        PATH = "${env.PATH}:/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"
-    }
+
 
     stages {
         stage('Checkout') {
@@ -15,7 +12,7 @@ pipeline {
         stage('Test') {
             steps {
                 // Chạy test
-                sh 'mvn test'
+                bat 'mvn test'
             }
             post {
                 always {
@@ -33,7 +30,7 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                bat 'mvn clean package'
             }
         }
     }
