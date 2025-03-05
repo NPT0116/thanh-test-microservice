@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // Thêm Maven vào PATH cho toàn bộ pipeline (đường dẫn theo cài đặt của bạn)
+        // Bổ sung đường dẫn Maven vào PATH (tuỳ máy)
         PATH = "${env.PATH}:/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"
     }
 
@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                // Chạy unit test, đảm bảo Maven đã cấu hình plugin JaCoCo trong pom.xml
+                // Chạy test
                 sh 'mvn test'
             }
             post {
@@ -22,17 +22,17 @@ pipeline {
                     // Thu thập báo cáo test
                     junit '**/target/surefire-reports/*.xml'
                     
-                    // Công bố kết quả code coverage sử dụng JaCoCo plugin
-                    jacoco execPattern: '**/target/jacoco.exec', 
-                           classPattern: '**/target/classes', 
-                           sourcePattern: '**/src/main/java', 
-                           exclusionPattern: ''
+                    // Publish coverage nếu có JaCoCo
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
                 }
             }
         }
         stage('Build') {
             steps {
-                // Build lại dự án
                 sh 'mvn clean package'
             }
         }
@@ -40,9 +40,57 @@ pipeline {
 
     post {
         success {
+            // Cập nhật status = SUCCESS lên GitHub
+            script {
+                step([
+                    $class: 'GitHubCommitStatusSetter',
+                    reposSource: [
+                        $class: 'ManuallyEnteredRepositorySource',
+                        url: 'https://github.com/NPT0116/thanh-test-microservice.git' // Sửa thành repo của bạn
+                    ],
+                    contextSource: [
+                        $class: 'ManuallyEnteredCommitContextSource',
+                        context: 'Jenkins/CI'  // Tên hiển thị trong status, tuỳ chọn
+                    ],
+                    statusResultSource: [
+                        $class: 'ConditionalStatusResultSource',
+                        results: [
+                            [
+                                $class: 'AnyBuildResult',
+                                state: 'SUCCESS',
+                                message: 'All builds passed!'
+                            ]
+                        ]
+                    ]
+                ])
+            }
             echo 'Build succeeded!'
         }
         failure {
+            // Cập nhật status = FAILURE lên GitHub
+            script {
+                step([
+                    $class: 'GitHubCommitStatusSetter',
+                    reposSource: [
+                        $class: 'ManuallyEnteredRepositorySource',
+                        url: 'https://github.com/NPT0116/thanh-test-microservice.git'
+                    ],
+                    contextSource: [
+                        $class: 'ManuallyEnteredCommitContextSource',
+                        context: 'Jenkins/CI'
+                    ],
+                    statusResultSource: [
+                        $class: 'ConditionalStatusResultSource',
+                        results: [
+                            [
+                                $class: 'AnyBuildResult',
+                                state: 'FAILURE',
+                                message: 'Build failed or coverage below threshold!'
+                            ]
+                        ]
+                    ]
+                ])
+            }
             echo 'Build failed!'
         }
     }
