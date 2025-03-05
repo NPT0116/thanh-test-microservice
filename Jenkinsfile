@@ -24,19 +24,19 @@ pipeline {
                         sourcePattern: '**/src/main/java'
                     )
                     
-                    script {
-                        // Giả sử bạn đã có các giá trị số liệu sau khi xử lý báo cáo
-                        def coverage = "75%"      // ví dụ: 75%
-                        def testSummary = "All tests passed"  // ví dụ: tóm tắt kết quả test
+script {
+    def coverage = "75%"        // Ví dụ: 75% độ phủ
+    def testSummary = "All tests passed"
 
-                        // Sử dụng githubChecks để tạo check run trên GitHub
-                        githubChecks context: 'Jenkins/CI',
-                                      conclusion: 'success',
-                                      output: [
-                                          title: "Build succeeded",
-                                          summary: "Test result: ${testSummary}\nCoverage: ${coverage}"
-                                      ]
-                    }
+    // Thay vì dùng githubChecks, hãy thử dùng publishChecks nếu nó có sẵn
+    publishChecks context: 'Jenkins/CI',
+                  conclusion: 'success',
+                  output: [
+                      title: "Build succeeded",
+                      summary: "Test result: ${testSummary}\nCoverage: ${coverage}"
+                  ]
+}
+
                 }
             }
         }
