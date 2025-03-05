@@ -28,18 +28,14 @@ script {
     def coverage = "75%"        // Ví dụ: 75% độ phủ
     def testSummary = "All tests passed"
 
-    // Thay vì dùng githubChecks, hãy thử dùng publishChecks nếu nó có sẵn
     publishChecks context: 'Jenkins/CI',
-                  conclusion: 'success',
+                  conclusion: 'SUCCESS', // Sử dụng chữ in hoa
                   output: [
                       title: "Build succeeded",
                       summary: "Test result: ${testSummary}\nCoverage: ${coverage}"
                   ]
 }
 
-                }
-            }
-        }
         stage('Build') {
             steps {
                 bat 'mvn clean package'
