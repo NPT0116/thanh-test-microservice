@@ -1,13 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        // Khai báo các tool nếu Jenkins chưa cài đặt global
-        // Tên này phải trùng với Global Tool Configuration
-        jdk 'jdk11'
-        maven 'maven3.8.6'
-    }
-
     stages {
         stage('Checkout') {
             steps {
