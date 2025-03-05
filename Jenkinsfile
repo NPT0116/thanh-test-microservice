@@ -1,5 +1,8 @@
 pipeline {
     agent any
+withEnv(["PATH+MAVEN=/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"]) {
+    sh 'mvn --version'
+}
 
 
 
