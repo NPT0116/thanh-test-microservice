@@ -12,25 +12,25 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Test') {
-            steps {
-                // Chạy test bằng Maven
-                bat 'mvn test'
-            }
-            post {
-                always {
-                    // Thu thập báo cáo test
-                    junit '**/target/surefire-reports/*.xml'
-                    
-                    // Publish coverage nếu có JaCoCo
-                    jacoco(
-                        execPattern: '**/target/jacoco.exec',
-                        classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java'
-                    )
-                }
-            }
+stage('Test') {
+    steps {
+        bat 'mvn test'
+    }
+    post {
+        always {
+            junit '**/target/surefire-reports/*.xml'
+            jacoco(
+                execPattern: '**/target/jacoco.exec',
+                classPattern: '**/target/classes',
+                sourcePattern: '**/src/main/java'
+            )
+
+            // Lưu trữ file báo cáo test làm artifact
+            archiveArtifacts artifacts: '**/target/surefire-reports/*.xml', allowEmptyArchive: true
         }
+    }
+}
+
         stage('Build') {
             steps {
                 bat 'mvn clean package'
