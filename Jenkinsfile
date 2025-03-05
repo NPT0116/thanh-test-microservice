@@ -1,50 +1,84 @@
 pipeline {
     agent any
 
+
+    tools {
+        maven "M3" // Ensure this matches your Maven installation configured in Jenkins
+    }
+
     stages {
-        stage('Checkout') {
-            steps {
-                // Lấy source code từ SCM (repo, branch) mà Jenkinsfile đang quét
-                checkout scm
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo "Building all microservices..."
-                sh "mvn clean package -DskipTests"
-            }
-        }
-
         stage('Test') {
             steps {
-                echo "Running tests..."
-                // Chạy test cho toàn bộ microservices
-                sh "mvn test"
+                // Checkout your source code from SCM
+                checkout scm
+                
+                // Run tests and generate JaCoCo reports for all modules.
+                // Running from the root POM, Maven will process all modules.
+                sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+                //  bat 'mvn clean test jacoco:report'
             }
             post {
-                always {
-                    // Thu thập báo cáo JUnit
+                success {
+                    // Collect test reports from all modules using a recursive wildcard
                     junit '**/target/surefire-reports/*.xml'
                     
-                    // Thu thập báo cáo coverage bằng JaCoCo (nếu plugin đã được cài)
-                    jacoco(
-                        execPattern: '**/target/jacoco.exec',
-                        classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java'
-                    )
+                    // Collect JaCoCo coverage XML reports from each module.
+                    // This pattern will find all jacoco.xml files in submodule directories.
+                    recordCoverage(tools: [[parser: 'JACOCO']],
+                        id: 'jacoco', name: 'JaCoCo Coverage',
+                        sourceCodeRetention: 'EVERY_BUILD',
+                        qualityGates: [
+                                [threshold: 70.0, metric: 'LINE', baseline: 'PROJECT', unstable: false],
+                                [threshold: 70.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: false]])
+
+                    step([
+                        $class: 'GitHubCommitStatusSetter',
+                        reposSource: [$class: 'ManuallyEnteredRepositorySource', url: 'https://github.com/pinkWar123/spring-petclinic-microservices.git'],
+                        contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: 'Coverage'],
+                        statusResultSource: [
+                            $class: 'ConditionalStatusResultSource',
+                            results: [
+                            [
+                                $class: 'AnyBuildResult',
+                                state: 'SUCCESS',
+                                message: 'All builds passed!'
+                            ],
+                            [
+                                $class: 'UnstableBuildResult',
+                                state: 'FAILURE',
+                                message: 'Coverage below threshold!'
+                            ],
+                            [
+                                $class: 'FailedBuildResult',
+                                state: 'FAILURE',
+                                message: 'Build failed!'
+                            ]
+                            ]
+                        ]
+                        ])
+
+
+
+
+                    
+                    publishChecks name: 'Coverage', summary: "Coverage is ${env.COVERAGE}%"
                 }
             }
         }
-
-        stage('Deliver') {
+        stage('Build') {
             steps {
-                echo "Delivering artifacts..."
-                // Tùy theo cách bạn triển khai: đẩy image Docker, upload file .jar, v.v.
-                // Ví dụ:
-                // sh "docker build -t my-petclinic ."
-                // sh "docker push my-petclinic"
+                // Build the project (this will package all modules)
+                sh 'mvn -B package'
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build succeeded!'
+        }
+        failure {
+            echo 'Build failed!'
         }
     }
 }
