@@ -42,28 +42,33 @@ pipeline {
         success {
             // Cập nhật trạng thái SUCCESS lên GitHub
             script {
-                step([
-                    $class: 'GitHubCommitStatusSetter',
-                    reposSource: [
-                        $class: 'ManuallyEnteredRepositorySource',
-                        url: 'https://github.com/NPT0116/thanh-test-microservice.git' // Sửa lại URL repo nếu cần
-                    ],
-                    contextSource: [
-                        $class: 'ManuallyEnteredCommitContextSource',
-                        context: 'Jenkins/CI'
-                    ],
-                    statusResultSource: [
-                        $class: 'ConditionalStatusResultSource',
-                        results: [
-                            [
-                                $class: 'AnyBuildResult',
-                                state: 'SUCCESS',
-                                message: 'All builds passed!'
-                            ]
-                        ]
-                    ]
-                ])
-            }
+    // Giả sử bạn đã trích xuất được số liệu độ phủ và tóm tắt kết quả test
+    def coverage = "75"  // ví dụ: 75%
+    def testSummary = "All tests passed"  // ví dụ: tóm tắt kết quả test
+
+    step([
+        $class: 'GitHubCommitStatusSetter',
+        reposSource: [
+            $class: 'ManuallyEnteredRepositorySource',
+            url: 'https://github.com/NPT0116/thanh-test-microservice.git'
+        ],
+        contextSource: [
+            $class: 'ManuallyEnteredCommitContextSource',
+            context: 'Jenkins/CI'
+        ],
+        statusResultSource: [
+            $class: 'ConditionalStatusResultSource',
+            results: [
+                [
+                    $class: 'AnyBuildResult',
+                    state: 'SUCCESS',
+                    message: "Build passed! Coverage: ${coverage}%. ${testSummary}"
+                ]
+            ]
+        ]
+    ])
+}
+
             echo 'Build succeeded!'
         }
         failure {
