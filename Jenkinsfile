@@ -12,9 +12,21 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Test') {
+            steps {
+                // Chạy test
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    // Thu thập báo cáo test
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
         stage('Build') {
             steps {
-                // Chạy build đơn giản
+                // Build dự án
                 sh 'mvn clean package'
             }
         }
