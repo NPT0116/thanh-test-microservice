@@ -1,36 +1,42 @@
 pipeline {
     agent any
-withEnv(["PATH+MAVEN=/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"]) {
-    sh 'mvn --version'
-}
 
-
+    // Thêm Maven vào PATH cho toàn bộ pipeline
+    environment {
+        // Lưu ý: PATH đã có sẵn nên dùng cách nối thêm đường dẫn vào PATH hiện tại.
+        PATH = "${env.PATH}:/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"
+    }
 
     stages {
         stage('Test') {
             steps {
-                // Checkout your source code from SCM
+                // Checkout mã nguồn
                 checkout scm
-                
-                // Run tests and generate JaCoCo reports for all modules.
-                // Running from the root POM, Maven will process all modules.
+
+                // In phiên bản Maven để kiểm tra PATH đã được cấu hình đúng chưa
+                sh 'mvn --version'
+
+                // Chạy build với mục đích test (không dừng nếu test thất bại)
                 sh 'mvn -Dmaven.test.failure.ignore=true clean package'
-                //  bat 'mvn clean test jacoco:report'
             }
             post {
                 success {
-                    // Collect test reports from all modules using a recursive wildcard
+                    // Thu thập báo cáo test
                     junit '**/target/surefire-reports/*.xml'
                     
-                    // Collect JaCoCo coverage XML reports from each module.
-                    // This pattern will find all jacoco.xml files in submodule directories.
-                    recordCoverage(tools: [[parser: 'JACOCO']],
-                        id: 'jacoco', name: 'JaCoCo Coverage',
+                    // Thu thập báo cáo coverage của JaCoCo từ tất cả các module
+                    recordCoverage(
+                        tools: [[parser: 'JACOCO']],
+                        id: 'jacoco', 
+                        name: 'JaCoCo Coverage',
                         sourceCodeRetention: 'EVERY_BUILD',
                         qualityGates: [
-                                [threshold: 70.0, metric: 'LINE', baseline: 'PROJECT', unstable: false],
-                                [threshold: 70.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: false]])
+                            [threshold: 70.0, metric: 'LINE', baseline: 'PROJECT', unstable: false],
+                            [threshold: 70.0, metric: 'BRANCH', baseline: 'PROJECT', unstable: false]
+                        ]
+                    )
 
+                    // Cập nhật trạng thái commit trên GitHub dựa theo kết quả build
                     step([
                         $class: 'GitHubCommitStatusSetter',
                         reposSource: [$class: 'ManuallyEnteredRepositorySource', url: 'https://github.com/pinkWar123/spring-petclinic-microservices.git'],
@@ -38,36 +44,33 @@ withEnv(["PATH+MAVEN=/opt/homebrew/Cellar/maven/3.9.9/libexec/bin"]) {
                         statusResultSource: [
                             $class: 'ConditionalStatusResultSource',
                             results: [
-                            [
-                                $class: 'AnyBuildResult',
-                                state: 'SUCCESS',
-                                message: 'All builds passed!'
-                            ],
-                            [
-                                $class: 'UnstableBuildResult',
-                                state: 'FAILURE',
-                                message: 'Coverage below threshold!'
-                            ],
-                            [
-                                $class: 'FailedBuildResult',
-                                state: 'FAILURE',
-                                message: 'Build failed!'
-                            ]
+                                [
+                                    $class: 'AnyBuildResult',
+                                    state: 'SUCCESS',
+                                    message: 'All builds passed!'
+                                ],
+                                [
+                                    $class: 'UnstableBuildResult',
+                                    state: 'FAILURE',
+                                    message: 'Coverage below threshold!'
+                                ],
+                                [
+                                    $class: 'FailedBuildResult',
+                                    state: 'FAILURE',
+                                    message: 'Build failed!'
+                                ]
                             ]
                         ]
-                        ])
+                    ])
 
-
-
-
-                    
+                    // Công bố kết quả kiểm tra
                     publishChecks name: 'Coverage', summary: "Coverage is ${env.COVERAGE}%"
                 }
             }
         }
         stage('Build') {
             steps {
-                // Build the project (this will package all modules)
+                // Build lại dự án (package tất cả modules)
                 sh 'mvn -B package'
             }
         }
