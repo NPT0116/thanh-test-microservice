@@ -2,9 +2,6 @@ pipeline {
     agent any
 
 
-    tools {
-        maven "M3" // Ensure this matches your Maven installation configured in Jenkins
-    }
 
     stages {
         stage('Test') {
