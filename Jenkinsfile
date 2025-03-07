@@ -15,7 +15,7 @@ pipeline {
 stage('Test') {
     steps {
         bat 'mvn test'
-    }
+    }asdfasdf sdf
     post {
         always {
             junit '**/target/surefire-reports/*.xml'
